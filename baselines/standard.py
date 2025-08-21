@@ -4,6 +4,7 @@ The ORExplainer agent will interact with LLM-based agents.
 
 
 """
+
 import os
 from typing import Dict, List, Optional, Union
 
@@ -12,6 +13,7 @@ from autogen.agentchat.agent import Agent
 from autogen.code_utils import extract_code
 from eventlet.timeout import Timeout
 from termcolor import colored
+
 from utils import save_src_code
 
 try:
@@ -157,16 +159,18 @@ class ORExplainer(autogen.AssistantAgent):
     The ORExplainer agent manages two assistant agents(writer and safeguard).
     """
 
-    def __init__(self,
-                 name,
-                 problem_data,
-                 log_dir=None,
-                 solver_software="gurobi",
-                 doc_str="",
-                 example_qa="",
-                 debug_times=3,
-                 use_safeguard=True,
-                 **kwargs):
+    def __init__(
+        self,
+        name,
+        problem_data,
+        log_dir=None,
+        solver_software="gurobi",
+        doc_str="",
+        example_qa="",
+        debug_times=3,
+        use_safeguard=True,
+        **kwargs,
+    ):
         """
         Args:
             name(str): agent name.
@@ -189,26 +193,26 @@ class ORExplainer(autogen.AssistantAgent):
         self._log_dir = log_dir
         self._doc_str = doc_str
         self._example_qa = example_qa
-        assert solver_software in [
-            "gurobi", "pyomo"], "Unknown solver software."
+        assert solver_software in ["gurobi", "pyomo"], "Unknown solver software."
 
         self._solver_software = solver_software
         # generate the original execution result
-        self._origin_execution_result = _run_with_exec(source_code,
-                                                       self._solver_software)
+        self._origin_execution_result = _run_with_exec(
+            source_code, self._solver_software
+        )
         print("Original Execution Result:")
         print(colored(str(self._origin_execution_result), "yellow"))
-        with open(os.path.join(self._log_dir, "original_execution_result.csv"), "a") as f:
-            f.write(str(self._origin_execution_result) + '\n')
+        with open(
+            os.path.join(self._log_dir, "original_execution_result.csv"), "a"
+        ) as f:
+            f.write(str(self._origin_execution_result) + "\n")
 
         self._new_code = None
         self._new_execution_result = None
-        self._writer = autogen.AssistantAgent(
-            "writer",
-            llm_config=self.llm_config)
+        self._writer = autogen.AssistantAgent("writer", llm_config=self.llm_config)
         self._safeguard = autogen.AssistantAgent(
-            "safeguard",
-            llm_config=self.llm_config)
+            "safeguard", llm_config=self.llm_config
+        )
         self._debug_times_left = self.debug_times = debug_times
         self._use_safeguard = use_safeguard
         self._success = False
@@ -225,18 +229,25 @@ class ORExplainer(autogen.AssistantAgent):
         """Reply based on the conversation history."""
         if sender not in [self._writer, self._safeguard]:
             # Step 1: receive the message from the user
-            user_chat_history = ("\nHere are the history of discussions:\n"
-                                 f"{self._oai_messages[sender]}")
-            writer_sys_msg = (WRITER_SYSTEM_MSG.format(
-                solver_software=self._solver_software,
-                description=self._description,
-                source_code=self._source_code,
-                doc_str=self._doc_str,
-                example_qa=self._example_qa,
-                execution_result=self._origin_execution_result,
-            ) + user_chat_history)
-            safeguard_sys_msg = SAFEGUARD_SYSTEM_MSG.format(
-                source_code=self._source_code) + user_chat_history
+            user_chat_history = (
+                "\nHere are the history of discussions:\n"
+                f"{self._oai_messages[sender]}"
+            )
+            writer_sys_msg = (
+                WRITER_SYSTEM_MSG.format(
+                    solver_software=self._solver_software,
+                    description=self._description,
+                    source_code=self._source_code,
+                    doc_str=self._doc_str,
+                    example_qa=self._example_qa,
+                    execution_result=self._origin_execution_result,
+                )
+                + user_chat_history
+            )
+            safeguard_sys_msg = (
+                SAFEGUARD_SYSTEM_MSG.format(source_code=self._source_code)
+                + user_chat_history
+            )
             self._writer.update_system_message(writer_sys_msg)
             self._safeguard.update_system_message(safeguard_sys_msg)
             self._writer.reset()
@@ -265,14 +276,14 @@ class ORExplainer(autogen.AssistantAgent):
         print(self.last_message(sender)["content"])
         _, code = extract_code(self.last_message(sender)["content"])[0]
 
-        save_src_code(self._log_dir, "generate_code",
-                      code, "txt", is_json=True)
+        save_src_code(self._log_dir, "generate_code", code, "txt", is_json=True)
 
         # Step 3: safeguard
         safe_msg = ""
         if self._use_safeguard:
-            self.initiate_chat(message=SAFEGUARD_PROMPT.format(code=code),
-                               recipient=self._safeguard)
+            self.initiate_chat(
+                message=SAFEGUARD_PROMPT.format(code=code), recipient=self._safeguard
+            )
             safe_msg = self.last_message(self._safeguard)["content"]
         else:
             safe_msg = "SAFE"
@@ -287,14 +298,19 @@ class ORExplainer(autogen.AssistantAgent):
 
             print("New Execution Result:")
             print(colored(str(execution_rst), "yellow"))
-            with open(os.path.join(self._log_dir, "new_execution_result.csv"), "a") as f:
-                f.write(str(execution_rst) + '\n')
+            with open(
+                os.path.join(self._log_dir, "new_execution_result.csv"), "a"
+            ) as f:
+                f.write(str(execution_rst) + "\n")
 
             if type(execution_rst) in [str, int, float]:
                 # we successfully run the code and get the result
                 self._success = True
                 # Step 6: request to interpret results
-                return INTERPRETER_PROMPT.format(original_execution_result=self._origin_execution_result, execution_rst=execution_rst)
+                return INTERPRETER_PROMPT.format(
+                    original_execution_result=self._origin_execution_result,
+                    execution_rst=execution_rst,
+                )
         else:
             # DANGER: If not safe, try to debug. Redo coding
             execution_rst = """
@@ -303,17 +319,20 @@ class ORExplainer(autogen.AssistantAgent):
             if self._debug_times_left > 0:
                 # Try to debug and write code again (back to step 2)
                 self._debug_times_left -= 1
-                return DEBUG_PROMPT.format(error_type=type(execution_rst), error_message=str(execution_rst))
+                return DEBUG_PROMPT.format(
+                    error_type=type(execution_rst), error_message=str(execution_rst)
+                )
             else:
                 execution_rst_no = "No code"
                 # save the new code for each query
-                save_src_code(self._log_dir, "new_code",
-                              execution_rst_no, "py")
+                save_src_code(self._log_dir, "new_code", execution_rst_no, "py")
                 # No more debug times left, return the error message
                 print("New Execution Result:")
                 print(colored(str(execution_rst_no), "yellow"))
-                with open(os.path.join(self._log_dir, "new_execution_result.csv"), "a") as f:
-                    f.write(str(execution_rst_no) + '\n')
+                with open(
+                    os.path.join(self._log_dir, "new_execution_result.csv"), "a"
+                ) as f:
+                    f.write(str(execution_rst_no) + "\n")
 
 
 # %% Helper functions to edit and run code.
@@ -323,8 +342,7 @@ class ORExplainer(autogen.AssistantAgent):
 # This approach replicate the evaluation section of the ORExplainer paper.
 
 
-def _run_with_exec(src_code: str,
-                   solver_software: str) -> Union[str, Exception]:
+def _run_with_exec(src_code: str, solver_software: str) -> Union[str, Exception]:
     """Run the code snippet with exec.
 
     Args:
@@ -341,8 +359,11 @@ def _run_with_exec(src_code: str,
 
     timeout = Timeout(
         60,
-        TimeoutError("This is a timeout exception, in case "
-                     "GPT's code falls into infinite loop."))
+        TimeoutError(
+            "This is a timeout exception, in case "
+            "GPT's code falls into infinite loop."
+        ),
+    )
     try:
         exec(src_code, locals_dict, locals_dict)
     except Exception as e:
@@ -376,7 +397,8 @@ def _get_optimization_result(locals_dict: dict, solver_software: str) -> str:
                 ans = "Model Status:" + str(status)
         else:
             ans = "Optimization problem solved. The objective value is: " + str(
-                locals_dict["m"].objVal)
+                locals_dict["m"].objVal
+            )
     elif solver_software == "pyomo":
         status = locals_dict["m"].solver.termination_condition
         if status != TerminationCondition.optimal:
@@ -390,7 +412,8 @@ def _get_optimization_result(locals_dict: dict, solver_software: str) -> str:
                 ans = "Model Status:" + str(status)
         else:
             ans = "Optimization problem solved. The objective value is: " + str(
-                locals_dict["m"].obj())
+                locals_dict["m"].obj()
+            )
     else:
         raise ValueError("Unknown solver software: " + solver_software)
 
