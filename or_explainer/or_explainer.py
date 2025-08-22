@@ -45,7 +45,7 @@ WRITER_SYSTEM_MSG = """
 
 **Role:** You are a chatbot tasked with:
 (1) Writing Python code for operations research-related projects.
-(2) Explaining solutions using the Gurobi Python solver.
+(2) Explaining solutions using the {solver_software} Python solver.
 
 --- Problem Description: ---
 {description}
@@ -368,6 +368,9 @@ class ORExplainer(autogen.AssistantAgent):
         # Remove unused variables:
         # The message is already stored in self._oai_messages
         del messages, default_reply
+
+        print(colored(f"Sender: {sender.name}", "blue"))
+
         """Reply based on the conversation history."""
         if sender not in [self._writer, self._safeguard]:
             # Step 1: receive the message from the user
@@ -396,18 +399,27 @@ class ORExplainer(autogen.AssistantAgent):
             self._safeguard.reset()
             self._debug_times_left = self.debug_times
             self._success = False
+
             # Step 2-6: code, safeguard, and interpret
+            print(colored("Initiating chat with writer...", "blue"))
             self.initiate_chat(self._writer, message=CODE_PROMPT)
             if self._success:
                 # step 7: receive interpret result
                 reply = self.last_message(self._writer)["content"]
             else:
                 reply = "Sorry. I cannot answer your question."
+
             # Finally, step 8: send reply to user
+            print(colored(f"Reply to {sender.name}: {reply}", "green"))
             return reply
+
         if sender == self._writer:
             # reply to writer
-            return self._generate_reply_to_writer(sender)
+            print(colored("Generate reply to writer...", "blue"))
+            reply = self._generate_reply_to_writer(sender)
+            print(colored(f"Reply to {sender.name}: {reply}", "green"))
+            return reply
+
         # no reply to safeguard
 
     def _generate_reply_to_writer(self, sender):
@@ -415,7 +427,7 @@ class ORExplainer(autogen.AssistantAgent):
             # no reply to writer
             return
 
-        print(self.last_message(sender)["content"])
+        print(colored(f"Message: {self.last_message(sender)['content']}", "blue"))
         _, code = extract_code(self.last_message(sender)["content"])[0]
 
         try:
@@ -458,6 +470,8 @@ class ORExplainer(autogen.AssistantAgent):
             save_src_code(self._log_dir, "new_code", src_code, "py")
 
             execution_rst = _run_with_exec(src_code, self._solver_software)
+
+            print(colored("Computing graph dist", "blue"))
             different_model = graph_dist_computing(
                 self._original_mps_file_path, new_mps_file_path
             )
@@ -535,12 +549,18 @@ def _run_with_exec(src_code: str, solver_software: str) -> Union[str, Exception]
         ),
     )
     try:
+        # print(colored("Code:", "green"))
+        # print(colored(src_code, "green"))
+        print(colored("Running the code snippet with exec...", "green"))
         exec(src_code, locals_dict, locals_dict)
     except Exception as e:
         return e
     finally:
         timeout.cancel()
 
+    print(colored("Code executed successfully. Getting optimization results", "blue"))
+    print(colored(f"Solver software: {solver_software}", "blue"))
+    # print(colored(f"locals_dict: {locals_dict}", "blue"))
     try:
         ans = _get_optimization_result(locals_dict, solver_software)
     except Exception as e:
@@ -809,7 +829,7 @@ def _get_optimization_result(locals_dict: dict, solver_software: str) -> str:
                 locals_dict["m"].objVal
             )
     elif solver_software == "pyomo":
-        status = locals_dict["m"].solver.termination_condition
+        status = locals_dict["result"].solver.termination_condition
         if status != TerminationCondition.optimal:
             if status == TerminationCondition.unbounded:
                 ans = "unbounded"

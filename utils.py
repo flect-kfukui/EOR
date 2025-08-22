@@ -11,6 +11,7 @@ import networkx as nx
 import numpy as np
 import torch
 from scipy.sparse import csr_matrix
+from termcolor import colored
 
 
 def find_matched_problems(base_dir, pattern):
@@ -74,7 +75,7 @@ def save_src_code(
         else:
             file.write(src_code)
 
-    print(f"File saved as: {filename}")
+    print(colored(f"File saved as: {filename}", "blue"))
 
 
 def read_mps(mps_file_path):
@@ -93,6 +94,7 @@ def read_mps(mps_file_path):
     """
     if isinstance(mps_file_path, mip.Model):
         return mps_file_path
+    # mdl = mip.Model(solver_name=mip.CBC)
     mdl = mip.Model()
     mdl.verbose = 0
     err_msg = ""

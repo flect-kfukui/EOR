@@ -171,3 +171,4 @@ libs
 src/requirements.txt
 volume/
 load_test_data/
+logs/

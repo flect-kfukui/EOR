@@ -89,9 +89,10 @@ def main():
 
     # Define the agents
     or_explainer_commander = ORExplainer(
-        name="ORExplainer example",
+        name="ORExplainer-example",
         problem_data=problem_data,
         log_dir=log_dir,
+        solver_software="pyomo",
         example_qa=example_qa,
         debug_times=3,
         llm_config=default_llm_config,
