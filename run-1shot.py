@@ -1,12 +1,13 @@
 # test OR-explainer installation
-import os
 import argparse
+import os
+
 import autogen
-from utils import read_problem
+
 from or_explainer.or_explainer import ORExplainer
+from utils import read_problem
 
-
-config_file_or_env = 'OAI_CONFIG_LIST'  # modify path
+config_file_or_env = "OAI_CONFIG_LIST"  # modify path
 config_list = autogen.config_list_from_json(
     env_or_file=config_file_or_env,
     filter_dict={
@@ -21,7 +22,7 @@ config_list = autogen.config_list_from_json(
             "gpt-4-0613",
             "gpt-4-turbo",
         }
-    }
+    },
 )
 default_llm_config = {
     "config_list": config_list,
@@ -64,8 +65,7 @@ def main():
 
     problem_dir = os.path.join(benchmark, problem)
     if not os.path.exists(problem_dir):
-        print(
-            f"The problem {problem} does not exist in the benchmark {benchmark}.")
+        print(f"The problem {problem} does not exist in the benchmark {benchmark}.")
         return
 
     problem_data = read_problem(problem_dir)
@@ -89,9 +89,10 @@ def main():
 
     # Define the agents
     or_explainer_commander = ORExplainer(
-        name="ORExplainer example",
+        name="ORExplainer-example",
         problem_data=problem_data,
         log_dir=log_dir,
+        solver_software="pyomo",
         example_qa=example_qa,
         debug_times=3,
         llm_config=default_llm_config,

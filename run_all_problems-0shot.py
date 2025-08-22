@@ -1,12 +1,13 @@
 # test OR-explainer installation
-import os
 import argparse
+import os
+
 import autogen
-from utils import read_problem, find_matched_problems
+
 from or_explainer.or_explainer import ORExplainer
+from utils import find_matched_problems, read_problem
 
-
-config_file_or_env = 'OAI_CONFIG_LIST'  # modify path
+config_file_or_env = "OAI_CONFIG_LIST"  # modify path
 config_list = autogen.config_list_from_json(
     env_or_file=config_file_or_env,
     filter_dict={
@@ -24,7 +25,7 @@ config_list = autogen.config_list_from_json(
             "gpt-4-turbo-2024-04-09",
             "gpt-4-1106-preview",
         }
-    }
+    },
 )
 default_llm_config = {
     "config_list": config_list,
@@ -70,7 +71,8 @@ def main():
     total_problems = len(problems)
     if total_problems == 0:
         print(
-            f"No problem found for the benchmark {benchmark} and problem {args.problem}, please check the problem arguments.")
+            f"No problem found for the benchmark {benchmark} and problem {args.problem}, please check the problem arguments."
+        )
         return
     print(f"Total problems: {total_problems}")
 
