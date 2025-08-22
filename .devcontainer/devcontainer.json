@@ -38,7 +38,8 @@
 				"eamodio.gitlens",
 				"ryanluker.vscode-coverage-gutters",
 				"ms-toolsai.jupyter",
-				"mechatroner.rainbow-csv"
+				"mechatroner.rainbow-csv",
+				"ms-vscode.vscode-websearchforcopilot"
 			]
 		}
 	},
